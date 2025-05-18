@@ -1,0 +1,201 @@
+Music Studio Database Schema
+
+Entities and Connections
+
+Studio:
+- Stores information about a music studio (name, contact details, address).
+- One-to-many with Equipment: A studio can have many pieces of equipment.
+- One-to-many with StudioStaff: A studio can employ many staff members.
+- One-to-one with Address: Each studio has one address. 
+
+Address:
+- Holds the address details of a studio or client.
+- One-to-one with Studio: Each studio has one address.
+- One-to-many with Client: A client can have multiple addresses.
+
+Equipment:
+- Represents a piece of equipment in the studio.
+- Many-to-one with Studio: Each piece of equipment belongs to one studio.
+- Many-to-one with EquipmentType: Each piece of equipment has one equipment type.
+- One-to-many with ConditionOfEquipment: A piece of equipment can have many condition reports.
+
+EquipmentType:
+- Categorizes different types of equipment (e.g., microphone, amplifier).
+- One-to-many with Equipment: An equipment type can be associated with many pieces of equipment.
+
+ConditionOfEquipment:
+- Tracks the condition of a piece of equipment over time.
+- Many-to-one with Equipment: Each condition report belongs to one piece of equipment.
+
+Client:
+- Represents the clients (or artists) who use the studio.
+- One-to-many with Session: A client can have many sessions booked.
+- One-to-many with Feedback: A client can provide feedback on multiple occasions.
+- One-to-many with Invoice: A client can have many invoices.
+- One-to-many with Records: A client can be associated with many records (recordings).
+- One-to-many with Address: A client can have multiple addresses.
+
+Staff:
+- Represents the studio staff members.
+- Many-to-one with StaffRole: Each staff member has one role.
+- Many-to-many with Studio (through StudioStaff): A staff member can work at many studios, and a studio can have many staff members.
+- One-to-many with Session: A staff member can be associated with many sessions.
+- One-to-many with Records: A staff member (as an engineer) can be associated with many records.
+
+StaffRole:
+- Defines different roles within the studio (e.g., engineer, producer).
+- One-to-many with Staff: A staff role can be assigned to many staff members.
+
+RoomType:
+- Categorizes the different types of rooms in the studio.
+- One-to-many with Session: A room type can be used for many sessions.
+
+TypeOfActivity:
+- Defines the types of activities that can be performed in the studio (e.g., recording, rehearsal).
+- One-to-many with Session: An activity type can be associated with many sessions.
+
+Session:
+- Represents a booking for a specific studio, client, room, staff member, and activity at a specific time.
+- Many-to-one with Studio, Client, RoomType, Staff, and TypeOfActivity: A session is associated with one of each of these entities.
+- One-to-many with Records: A session can produce many records.
+- One-to-many with Invoice: A session can have one invoice.
+- One-to-many with Feedback: A session can have multiple feedback records.
+
+Feedback:
+- Stores feedback provided by clients.
+- Many-to-one with Client: Feedback is given by one client.
+- Many-to-one with Session: Feedback is associated with one session. 
+
+PaymentType:
+- Defines different payment methods.
+- One-to-many with Invoice: A payment type can be used for many invoices.
+
+Invoice:
+- Represents an invoice issued to a client for a session.
+- Many-to-one with Client, Session, and PaymentType: An invoice is associated with one of each of these entities.
+
+Records:
+- Represents the actual recordings created during sessions.
+- Many-to-one with Session: A record is produced in one session.
+- Many-to-one with Client: A record belongs to one client.
+- Many-to-one with Staff: A record is associated with one staff member (engineer).
+- Many-to-one with StatusOfRecord: A record has one status.
+
+StatusOfRecord:
+- Defines a record’s different statuses (e.g., in progress, completed).
+- One-to-many with Records: A status can be assigned to many records.
+
+
+StudioStaff:
+- Represents the relationship between staff and studios.
+- Many-to-one with Staff: Each record in StudioStaff is associated with one staff member.
+- Many-to-one with Studio: Each record in StudioStaff is associated with one studio.
+
+
+Functionalities of the database:
+
+1. Equipment Condition Tracking
+
+Question: What is the current condition of all equipment in the studio?
+
+- Entities involved: Equipment, ConditionOfEquipment
+- Process:
+        1. Retrieve all records from the Equipment table.
+        2. For each piece of equipment, retrieve the most recent record from the ConditionOfEquipment table associated with that EquipmentID (this can be done by sorting by ConditionDate in descending order and taking the first result).
+        3. Display the EquipmentName and ConditionDescription from the retrieved records.
+
+2. Feedback Analysis
+
+Question: What feedback has been given for sessions, including client ratings and comments?
+
+- Entities involved: Feedback, Session, Client
+- Process:
+        1. Retrieve all records from the Feedback table.
+        2. For each Feedback record, retrieve the associated Session information (e.g., SessionDate, StartTime) and Client information (e.g., Name, Surname).
+        3. Display the Client name, Session details, Rating, and Comments from the retrieved records.
+
+3. Session Scheduling
+
+Question: What upcoming sessions are scheduled in the next week?
+
+- Entities involved: Session
+- Process:
+        1. Calculate the date range for the next week (starting from the current date).
+        2. Retrieve all records from the Session table where SessionDate falls within the calculated date range.
+        3. Display the SessionDate, StartTime, EndTime, and any other relevant details for the retrieved sessions.
+
+4. Revenue Analysis
+
+Question: What is the total revenue generated by sessions in the studio over the past month?
+
+- Entities involved: Session, Invoice
+- Process:
+        1. Calculate the date range for the past month (starting from the current date and going back one month).
+        2. Retrieve all records from the Session table where SessionDate falls within the calculated date range.
+        3. For each Session, retrieve the associated Invoice record and its AmountDue.
+        4. Sum up the AmountDue values from all retrieved invoices to calculate the total revenue.
+
+5. Late Payments
+
+Question: Which clients have outstanding payments or missed their due dates?
+
+- Entities involved: Client, Invoice
+- Process:
+        1. Retrieve all records from the Invoice table where DueDate is in the past and AmountPaid is less than AmountDue.
+        2. For each overdue Invoice, retrieve the associated Client information (e.g., Name, Surname).
+        3. Display the Client name, InvoiceID, DueDate, amount due, and AmountPaid for the retrieved records.
+
+
+SQL:
+
+
+--1
+
+SELECT e.EquipmentName, c.ConditionDate, c.ConditionDescription
+FROM Equipment e
+JOIN ConditionOfEquipment c ON e.EquipmentID = c.EquipmentID
+WHERE c.ConditionDate = (
+    SELECT MAX(ConditionDate)
+    FROM ConditionOfEquipment
+    WHERE EquipmentID = e.EquipmentID
+);
+
+
+--2
+
+SELECT s.SessionID, c.ClientName, c.Surname, f.Rating, f.Comments
+FROM Feedback f
+JOIN Sessions s ON f.SessionID = s.SessionID
+JOIN Client c ON f.ClientID = c.ClientID;
+
+--3
+SELECT s.SessionID,s.SessionDate,s.StartTime,s.EndTime,c.ClientName,c.Surname AS ClientSurname,rt.RoomTypeName,st.StaffName,st.StaffSurname,ta.ActivityName,
+       s.Purpose
+FROM Sessions s
+JOIN Client c ON s.ClientID = c.ClientID
+JOIN RoomType rt ON s.RoomTypeID = rt.RoomTypeID
+JOIN Staff st ON s.StaffID = st.StaffID
+JOIN TypeOfActivity ta ON s.ActivityTypeID = ta.ActivityTypeID
+WHERE s.SessionDate BETWEEN TO_DATE('2025-01-14', 'YYYY-MM-DD') AND TO_DATE('2025-01-19', 'YYYY-MM-DD')
+ORDER BY s.SessionDate, s.StartTime;
+
+--4
+SELECT SUM(I.AmountPaid) AS TotalRevenue
+FROM Invoice I 
+JOIN Sessions S ON I.SessionID = S.SessionID
+WHERE S.SessionDate BETWEEN SYSDATE - INTERVAL '7' DAY AND SYSDATE;
+
+
+SELECT SUM(I.AmountPaid) AS TotalRevenue
+FROM Invoice I 
+JOIN Sessions S ON I.SessionID = S.SessionID
+WHERE S.SessionDate BETWEEN TO_DATE('2024-03-18', 'YYYY-MM-DD') AND TO_DATE('2024-03-28', 'YYYY-MM-DD');
+
+--5
+SELECT c.ClientName,c.Surname,i.AmountDue,i.DueDate,i.PaymentStatus
+FROM Invoice i
+JOIN Client c ON i.ClientID = c.ClientID
+WHERE i.PaymentStatus <> 'Paid' AND i.DueDate < TRUNC(SYSDATE);
+
+
+
